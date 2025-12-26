@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calculadora de Dígitos do CPF</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;max-width:760px;margin:40px auto;padding:0 16px}
+    .card{border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 8px 20px rgba(0,0,0,.06)}
+    label{display:block;font-weight:600;margin-bottom:8px}
+    input{width:100%;font-size:18px;padding:12px 14px;border:1px solid #d1d5db;border-radius:12px;outline:none}
+    input:focus{border-color:#111827}
+    .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+    button{cursor:pointer;border:0;border-radius:12px;padding:12px 14px;font-weight:700}
+    .primary{background:#111827;color:#fff}
+    .ghost{background:#f3f4f6}
+    .out{margin-top:14px;padding:14px;border-radius:12px;background:#f9fafb;border:1px dashed #d1d5db}
+    .muted{color:#6b7280;font-size:14px;margin-top:6px}
+    .err{color:#b91c1c;font-weight:600;margin-top:10px}
+    code{background:#f3f4f6;padding:2px 6px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="margin:0 0 10px">CPF — calcular os 2 últimos dígitos</h2>
+
+    <label for="base9">Digite os 9 primeiros dígitos</label>
+    <input id="base9" inputmode="numeric" autocomplete="off" placeholder="Ex: 123456789" maxlength="14" />
+
+    <div class="row">
+      <button class="primary" id="btnCalc">Calcular</button>
+      <button class="ghost" id="btnClear" type="button">Limpar</button>
+    </div>
+
+    <div id="error" class="err" style="display:none"></div>
+
+    <div id="output" class="out" style="display:none">
+      <div><b>DV1:</b> <span id="dv1"></span></div>
+      <div><b>DV2:</b> <span id="dv2"></span></div>
+      <div style="margin-top:8px"><b>CPF completo:</b> <code id="cpfFull"></code></div>
+      <div class="muted">Regra: soma ponderada → (soma × 10) % 11 → se der 10, vira 0.</div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function onlyDigits(s){ return (s || "").replace(/\D/g, ""); }
+
+    function calcDV(digits, startWeight){
+      // digits: array de números (0..9)
+      let sum = 0;
+      for (let i = 0; i < digits.length; i++) sum += digits[i] * (startWeight - i);
+      let dv = (sum * 10) % 11;
+      if (dv === 10) dv = 0;
+      return dv;
+    }
+
+    function formatCPF(cpf11){
+      const d = cpf11.split("");
+      return `${d.slice(0,3).join("")}.${d.slice(3,6).join("")}.${d.slice(6,9).join("")}-${d.slice(9,11).join("")}`;
+    }
+
+    function showError(msg){
+      $("error").style.display = msg ? "block" : "none";
+      $("error").textContent = msg || "";
+    }
+
+    function showOutput(show){
+      $("output").style.display = show ? "block" : "none";
+    }
+
+    $("btnCalc").addEventListener("click", () => {
+      showError("");
+      showOutput(false);
+
+      const raw = onlyDigits($("base9").value);
+      if (raw.length !== 9) return showError("Tem que ter exatamente 9 dígitos.");
+      if (/^(\d)\1{8}$/.test(raw)) return showError("Sequência repetida não é válida (ex: 000000000).");
+
+      const base = raw.split("").map(n => parseInt(n, 10));
+
+      const dv1 = calcDV(base, 10);
+      const dv2 = calcDV([...base, dv1], 11);
+
+      const cpf11 = raw + String(dv1) + String(dv2);
+
+      $("dv1").textContent = dv1;
+      $("dv2").textContent = dv2;
+      $("cpfFull").textContent = formatCPF(cpf11);
+
+      showOutput(true);
+    });
+
+    $("btnClear").addEventListener("click", () => {
+      $("base9").value = "";
+      showError("");
+      showOutput(false);
+      $("base9").focus();
+    });
+
+    // opcional: formatação leve enquanto digita
+    $("base9").addEventListener("input", (e) => {
+      const d = onlyDigits(e.target.value).slice(0, 9);
+      e.target.value = d;
+    });
+  </script>
+</body>
+</html>
